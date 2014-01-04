@@ -4,7 +4,7 @@
  */
 
 /* Environment class holds Lisp variable context */
-var Env = function(keys, values, outerEnv) {
+function Env(keys, values, outerEnv) {
   if (keys && values) {
     for (var i = 0; i < keys.length; i++) {
       this[keys[i]] = values[i];
@@ -28,13 +28,18 @@ Env.prototype.insert = function(keys) {
   }
 }
 
+/* StringLiteral class encapsulates "string constants" */
+function StringLiteral(strvalue) {
+  this.strvalue = strvalue;
+} 
+
 /* essential functions */
-var defaults = {
+var lisp_defaults = {
   '+': function(a, b) { return a + b; },
   '-': function(a, b) { return a - b; },
   '*': function(a, b) { return a * b; },
   '/': function(a, b) { return a / b; },
-  '=': function(a, b) { return a == b; },
+  '=': function(a, b) { return a === b; },
   '>': function(a, b) { return a > b; },
   '<': function(a, b) { return a < b; },
   'not': function(a) { return !a; },
@@ -43,10 +48,11 @@ var defaults = {
   'cdr': function(a) { return a.slice(1, a.length); }
 }
 
+/* set up global environment */
 var global_env = new Env();
-global_env.insert(defaults);
+global_env.insert(lisp_defaults);
 
-
+/* evaluation function, calculates the result of a given scheme representation */
 var _eval = function(x, env) {
   env = env || global_env;
 
@@ -88,11 +94,20 @@ var _eval = function(x, env) {
   }
 }
 
-/* return value of a single token - string, int or float */
+/* return value of a single token - string, int, bool, or float */
 var atom = function(token) {
   var value = parseInt(token);
   if (value == NaN || isNaN(token)) {
-    return token; // return it as string if number parsing failed
+    // check for boolean
+    if (token == '#f' || token == '#F')
+      return false;
+    else if (token == '#t' || token == '#T')
+      return true;
+    // check if its a literal string
+    if (/".*"/.test(token))
+      return new StringLiteral(token.slice(1, -1));
+    else
+      return token; // return plain string to be evaluated later
   } else if (parseFloat(token) != value) {
     return parseFloat(token);
   } else {
@@ -100,21 +115,27 @@ var atom = function(token) {
   }
 }
 
+
+/* error class used for user syntax errors */
+function SyntaxError(message) {
+  this.message = message;
+}
+
 /* iterate recursively through tokens and evaluate/discard each */
-var read_from = function(tokens) {
+var nested_repr = function(tokens) {
   if (tokens.length == 0) {
-    throw "unexpected end of tokens";
+    throw new SyntaxError("unexpected end of tokens");
   }
   var tok = tokens.shift();
   if (tok == '(') {
     var l = [];
     while (tokens[0] != ')') {
-      l.push(read_from(tokens));
+      l.push(nested_repr(tokens));
     }
     tokens.shift(); // remove ')' from stack
     return l;
   } else if (tok == ')') {
-    throw 'unexpected )';
+    throw new SyntaxError('unexpected )');
   } else {
     return atom(tok);
   }
@@ -122,12 +143,16 @@ var read_from = function(tokens) {
 
 /* add padding to parentheses and split by whitespace */
 var tokenize = function(s) {
-  return s.replace(/([()])/g ,' $1 ').match(/\S+/g);
+  return s
+    .replace(/([()])/g ,' $1 ') // add spacing for parentheses
+    .replace(/;(.*)\n/g, ' ')   // replace anything between ; and \n with spaces
+    .match(/[^;]*/g)[0]         // match resulting string until ;
+    .match(/\S+/g);             // split string by whitespace
 }
 
 /* read a Scheme expression from string */
 var parse = function(s) {
-  return read_from(tokenize(s))
+  return nested_repr(tokenize(s))
 }
 
 /* print result in Scheme */
@@ -144,12 +169,3 @@ var lsp = function(input) {
     var out = _eval(parse(input));
     console.log('=> '+out);
 }
-
-// ---------- testcases -------------
-
-//console.log(_eval(['*', 3, 3]));
-//console.log(_eval(['begin', ['define', 'r', 3], ['*', Math.PI, ['*', 'r', 'r']]]));
-//var program = '(begin (define r 3) (* 3.141592653 (* r r)))';
-var program2 = '(define area (lambda (r) (* 3.141592653 (* r r))))'
-lsp(program2);
-lsp('(area 3)');
