@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>scheme.js</title>
+<script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+<script src="http://terminal.jcubic.pl/js/jquery.terminal-0.7.12.min.js"></script>
+<script src="scheme.js"></script>
+<link rel="stylesheet" type="text/css" href="http://terminal.jcubic.pl/css/jquery.terminal.css" />
+<script>
+  jQuery(function($, undefined) {
+    $('#repl').terminal(function(command, term) {
+      if (command !== '') {
+        try {
+          var result = lsp(command);
+          if (result !== undefined) {
+            term.echo(new String(result));
+          }
+        } catch(e) {
+          term.error(new String(e.message));
+        }
+      } else {
+        term.echo('');
+      }
+    }, {
+      greetings: 'scheme.js',
+      name: 'js_demo',
+      height: 400,
+      prompt: 'repl> '});
+    });
+</script>
+</head>
+<body>
+<h2>scheme.js repl</h2>
+<div id="repl" style="width: 500px"></div>
+</body>
+</html>

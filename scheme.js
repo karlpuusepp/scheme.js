@@ -118,13 +118,14 @@ var atom = function(token) {
 
 /* error class used for user syntax errors */
 function SyntaxError(message) {
+  this.name = 'SyntaxError';
   this.message = message;
 }
 
 /* iterate recursively through tokens and evaluate/discard each */
 var nested_repr = function(tokens) {
   if (tokens.length == 0) {
-    throw new SyntaxError("unexpected end of tokens");
+    throw new SyntaxError("unexpected EOL");
   }
   var tok = tokens.shift();
   if (tok == '(') {
@@ -155,17 +156,28 @@ var parse = function(s) {
   return nested_repr(tokenize(s))
 }
 
-/* print result in Scheme */
+/* evaluate JS representations as Scheme syntax */
 var lisp_string = function(tokens) {
   if (tokens instanceof Array)
     return '(' + tokens.map(lisp_string).join(' ') + ')';
+  else if (tokens instanceof StringLiteral)
+    return tokens.strvalue;
+  else if (typeof(tokens) == 'function')
+    return '[function]';
   else
     return ''+tokens;
       
 }
 
-/* epl without the r */
+/* wrap all this in a single interface function */
 var lsp = function(input) {
+  try {
     var out = _eval(parse(input));
-    console.log('=> '+out);
+    return '=> ' + lisp_string(out);
+  } catch (e) {
+    if (e.name === 'TypeError')
+      throw new SyntaxError('unknown input');
+    if (e.name === 'SyntaxError')
+      throw e;
+  }
 }
