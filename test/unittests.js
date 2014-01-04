@@ -91,6 +91,38 @@ test('evaluate constant expressions', function() {
   strictEqual(_eval(['<', 2, 8]), true);
 });
 
+test('evaluate quote literal', function() {
+  deepEqual(_eval(parse('(quote asdfg)')).strvalue, 'asdfg');
+  deepEqual(_eval(parse('(quote (+ 15 15))')), ['+', 15, 15]);
+  deepEqual(_eval(parse('(quote (1 3 5))')), [1, 3, 5]);
+});
+
+test('evaluate if statement', function() {
+  strictEqual(_eval(parse('(if (< 5 5) (+ 2 5) (- 10 2))')), 8);
+  strictEqual(_eval(parse('(if (= 5 5) (+ 2 5) (- 10 2))')), 7);
+  throws(function() {
+    _eval(parse('(if #t 2)'));
+  }, SyntaxError);
+});
+
+test('evaluate cond statements', function() {
+  strictEqual(_eval(parse('(cond (#f "false") (#t "true"))')).strvalue, "true");
+  strictEqual(_eval(parse('(cond ((< 1 0) (+ 2 2)) (#f "false") (else "expected"))')).strvalue, "expected");
+});
+
+test('set! should change value in env', function() {
+  var testenv = new Env();
+  testenv['testval'] = 12;
+  _eval(parse('(set! testval 5)'), testenv);
+  strictEqual(testenv['testval'], 5);
+});
+
+test('define should add value to env', function() {
+  var testenv = new Env();
+  _eval(parse('(define testval 17.5)'), testenv);
+  strictEqual(testenv['testval'], 17.5);
+});
+
 test('evaluate single argument lambdas', function() {
   strictEqual(_eval([['lambda', ['x'], ['+', 'x', 'x']], 8]), 16);
   strictEqual(_eval([['lambda', ['x'], ['+', 'x', 'x']], 8]), 16);
@@ -101,11 +133,37 @@ test('evaluate multi-argument lambdas', function() {
   strictEqual(_eval(parse('((lambda (x y) (< x y)) 2 5)')), true);
 });
 
-test('calculate predefined variable', function() {
+test('begin should return last evaluated expression', function() {
+  strictEqual(_eval(parse('(begin 1 2 3 4 5)')), 5);
+});
+
+test('begin should retain predefined variables', function() {
   var result = _eval(['begin', ['define', 'r', 3], ['*', Math.PI, ['*', 'r', 'r']]]);
   equal(result, 28.274333882308138);
 });
 
+test('logical statements should evaluate', function() {
+  strictEqual(_eval(parse('(and #f #t)')), false);
+  strictEqual(_eval(parse('(or #f #t)')), true);
+});
+
+test('comparison should work on literals', function() {
+  strictEqual(_eval(parse('(= "str" "str")')), true);
+  strictEqual(_eval(parse('(= "str" "str1")')), false);
+});
+
+test('car and cdr should work with aliases', function() {
+  strictEqual(_eval(parse('(car (list 1 2 3 4 5))')), 1);
+  strictEqual(_eval(parse('(head (list 1 2 3 4 5))')), 1);
+  deepEqual(_eval(parse('(cdr (list 1))')), []);
+  deepEqual(_eval(parse('(cdr (list 1 2 3 4 5))')), [2,3,4,5]);
+  deepEqual(_eval(parse('(tail (list 1 2 3 4 5))')), [2,3,4,5]);
+});
+
+test('map function should be parsed correctly', function() {
+  strictEqual(_eval(parse('(null? (cdr (list 1)))')), true);
+  deepEqual(_eval(parse('(map not (list #t #f #t))')), [false, true, false]);
+});
 
 /* env (state) tests */
 
