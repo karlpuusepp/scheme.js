@@ -133,6 +133,13 @@ test('evaluate multi-argument lambdas', function() {
   strictEqual(_eval(parse('((lambda (x y) (< x y)) 2 5)')), true);
 });
 
+test('let statement should not pollute existing env', function() {
+  var testenv = new Env();
+  testenv.insert(lisp_defaults);
+  strictEqual(_eval(parse('(let ((a 5) (b 7)) (+ a b))'), testenv), 12);
+  ok(testenv['a'] == undefined);
+});
+
 test('begin should return last evaluated expression', function() {
   strictEqual(_eval(parse('(begin 1 2 3 4 5)')), 5);
 });

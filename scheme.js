@@ -136,6 +136,15 @@ var _eval = function(x, env) {
     var expression = x[2];
     return function() { return _eval(expression, new Env(variables, arguments, env)); };
 
+  } else if (x[0] === 'let'){         // (let (def) (expr))
+    var tempEnv = new Env(undefined, undefined, env);
+    for (var i = 0; i < x[1].length; i++) {
+      // add temporary variables to env
+      tempEnv[x[1][i][0]] = x[1][i][1];
+    }
+    var expression = x[2];
+    return _eval(expression, tempEnv);
+
   } else if (x[0] === 'begin') {      // (begin [expressions])
     var retval;
     for (var i = 1; i < x.length; i++) {
